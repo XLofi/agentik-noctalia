@@ -4,14 +4,12 @@ Agentik is a local-first Noctalia control surface for coding agents. It monitors
 
 ![Agentik session panel](thumbnail.webp)
 
-## Plugins
+## Plugin
 
-| Entry | Type | Purpose |
-| --- | --- | --- |
-| `notfinaldev/agentik-noctalia:agents` | Bar widget | Rotating live-agent count, work state, task progress, and attention indicator |
-| `notfinaldev/agentik-noctalia:session-panel` | Panel | Session dashboard, structured transcript, chat controls, and project actions |
-| `notfinaldev/agentik-noctalia:desktop-agents` | Desktop widget | Optional always-visible session dashboard and chat surface |
-| `notfinaldev/agentik-noctalia:monitor` | Service | Local OMP journal and Hermes process collector |
+| Field | Value |
+| --- | --- |
+| ID | `notfinaldev/agentik-noctalia` |
+| Entries | Bar widget: `agents`; panel: `session-panel`; desktop widget: `desktop-agents`; service: `monitor` |
 
 ## Usage
 
@@ -35,7 +33,8 @@ The panel can continue a completed OMP session, fork a session that is active el
 - `omp` on `PATH`, or `OMP_BIN` set to its executable. OMP supplies the required session journal and chat workflows.
 - Optional: `hermes` on `PATH`, or `HERMES_BIN` set to its executable, to monitor and launch Hermes Agent sessions.
 - Optional: `wl-copy` on `PATH` for the **Copy** actions shown beside choices, code, and tool output.
-- Optional: a supported terminal launcher for **Open in terminal**: `xdg-terminal-exec`, Ghostty, Kitty, Foot, Alacritty, GNOME Terminal, KGX, or Konsole. `AGENTIK_TERMINAL` overrides automatic selection.
+- Optional: `xdg-open` on `PATH` for **Open project directory**.
+- Optional terminal handoff uses `sh` plus the first available launcher: `xdg-terminal-exec`, `ghostty`, `kitty`, `foot`, `alacritty`, `gnome-terminal`, `kgx`, or `konsole`. `AGENTIK_TERMINAL` overrides automatic selection.
 
 ## Settings
 

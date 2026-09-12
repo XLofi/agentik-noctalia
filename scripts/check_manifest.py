@@ -30,9 +30,25 @@ def fail(message: str) -> None:
     sys.exit(1)
 
 
+def flatten_translations(value: object, prefix: str = "") -> dict[str, str]:
+    if isinstance(value, str):
+        return {prefix: value}
+    if not isinstance(value, dict):
+        fail(f"translation value at {prefix or '<root>'} must be a string or object")
+    flattened: dict[str, str] = {}
+    for key, child in value.items():
+        if not isinstance(key, str) or not key:
+            fail(f"translation object at {prefix or '<root>'} contains an invalid key")
+        path = f"{prefix}.{key}" if prefix else key
+        flattened.update(flatten_translations(child, path))
+    return flattened
+
+
 def main() -> None:
     manifest = tomllib.loads((ROOT / "plugin.toml").read_text(encoding="utf-8"))
-    translations = json.loads((ROOT / "translations" / "en.json").read_text(encoding="utf-8"))
+    translations = flatten_translations(
+        json.loads((ROOT / "translations" / "en.json").read_text(encoding="utf-8"))
+    )
     version = manifest.get("version")
     if not isinstance(version, str) or SEMVER.fullmatch(version) is None:
         fail("plugin version must use MAJOR.MINOR.PATCH (Noctalia does not accept prerelease suffixes)")
