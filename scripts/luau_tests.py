@@ -221,19 +221,24 @@ end
 """
 
 
+def flatten_translations(value: object, prefix: str = "") -> dict[str, str]:
+    if isinstance(value, str):
+        return {prefix: value}
+    if not isinstance(value, dict):
+        raise ValueError(f"invalid translation value at {prefix or '<root>'}")
+    flattened: dict[str, str] = {}
+    for key, child in value.items():
+        path = f"{prefix}.{key}" if prefix else key
+        flattened.update(flatten_translations(child, path))
+    return flattened
+
+
 def translations_literal(path: Path) -> str:
-    data = json.loads(path.read_text(encoding="utf-8"))
-    lines = []
-    for key in sorted(data):
-        lines.append(f'    ["{key}"] = {json.dumps(data[key], ensure_ascii=False)},')
-    return "\n".join(lines)
-
-
-def load_translations() -> dict:
-    path = ROOT / "translations" / "en.json"
-    if not path.exists():
-        sys.exit("error: translations/en.json not found")
-    return json.loads(path.read_text(encoding="utf-8"))
+    data = flatten_translations(json.loads(path.read_text(encoding="utf-8")))
+    return "\n".join(
+        f'    ["{key}"] = {json.dumps(data[key], ensure_ascii=False)},'
+        for key in sorted(data)
+    )
 
 
 # (name, script, test body). Each case runs in its own luau process.
