@@ -4,14 +4,12 @@ Agentik is a local-first Noctalia control surface for coding agents. It monitors
 
 ![Agentik session panel](thumbnail.webp)
 
-## Plugins
+## Plugin
 
-| Entry | Type | Purpose |
-| --- | --- | --- |
-| `notfinaldev/agentik-noctalia:agents` | Bar widget | Rotating live-agent count, work state, task progress, and attention indicator |
-| `notfinaldev/agentik-noctalia:session-panel` | Panel | Session dashboard, structured transcript, chat controls, and project actions |
-| `notfinaldev/agentik-noctalia:desktop-agents` | Desktop widget | Optional always-visible session dashboard and chat surface |
-| `notfinaldev/agentik-noctalia:monitor` | Service | Local OMP journal and Hermes process collector |
+| Field | Value |
+| --- | --- |
+| ID | `notfinaldev/agentik-noctalia` |
+| Entries | Bar widget: `agents`; panel: `session-panel`; desktop widget: `desktop-agents`; service: `monitor` |
 
 ## Usage
 
