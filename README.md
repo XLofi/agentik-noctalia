@@ -35,7 +35,8 @@ The panel can continue a completed OMP session, fork a session that is active el
 - `omp` on `PATH`, or `OMP_BIN` set to its executable. OMP supplies the required session journal and chat workflows.
 - Optional: `hermes` on `PATH`, or `HERMES_BIN` set to its executable, to monitor and launch Hermes Agent sessions.
 - Optional: `wl-copy` on `PATH` for the **Copy** actions shown beside choices, code, and tool output.
-- Optional: a supported terminal launcher for **Open in terminal**: `xdg-terminal-exec`, Ghostty, Kitty, Foot, Alacritty, GNOME Terminal, KGX, or Konsole. `AGENTIK_TERMINAL` overrides automatic selection.
+- Optional: `xdg-open` on `PATH` for **Open project directory**.
+- Optional terminal handoff uses `sh` plus the first available launcher: `xdg-terminal-exec`, `ghostty`, `kitty`, `foot`, `alacritty`, `gnome-terminal`, `kgx`, or `konsole`. `AGENTIK_TERMINAL` overrides automatic selection.
 
 ## Settings
 
