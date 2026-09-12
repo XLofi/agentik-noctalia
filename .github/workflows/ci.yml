@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.11"
+      - name: Unit tests
+        run: python3 -m unittest discover -s tests -v
+      - name: Byte-compile Python entry points
+        run: python3 -m py_compile build_orbs.py chat_bridge.py omp_sessions.py scripts/build_submission.py scripts/check_manifest.py scripts/check_repository.py scripts/check_release_archive.py scripts/luau_tests.py
+      - name: Manifest and translation checks
+        run: python3 scripts/check_manifest.py
+      - name: Repository integrity check
+        run: python3 scripts/check_repository.py
+      - name: Release archive check
+        run: |
+          git archive --format=tar.gz --prefix=agentik-noctalia/ -o /tmp/agentik-noctalia.tar.gz HEAD
+          python3 scripts/check_release_archive.py /tmp/agentik-noctalia.tar.gz
+      - name: Install luau CLI
+        run: |
+          curl --fail --show-error --location --retry 3 -o /tmp/luau.zip https://github.com/luau-lang/luau/releases/download/0.732/luau-ubuntu.zip
+          echo "05d0e67bedbe012cbb1faf8be4cc93099fa0968a621ee0c1f27ad9088d999555  /tmp/luau.zip" | sha256sum --check
+          unzip -q /tmp/luau.zip -d /tmp/luau
+          echo "/tmp/luau" >> "$GITHUB_PATH"
+      - name: Luau script harness
+        run: python3 scripts/luau_tests.py

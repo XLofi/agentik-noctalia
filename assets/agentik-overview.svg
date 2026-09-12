@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675" role="img" aria-labelledby="title desc">
+  <title id="title">Agentik product overview</title>
+  <desc id="desc">A Noctalia bar indicator opens session monitoring and full coding-agent chat for Oh My Pi and Hermes Agent.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#10131d"/><stop offset="1" stop-color="#1c2233"/></linearGradient>
+    <radialGradient id="orb"><stop stop-color="#d8c7ff"/><stop offset="0.45" stop-color="#8f6cff" stop-opacity=".9"/><stop offset="1" stop-color="#4f35a8" stop-opacity=".15"/></radialGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="10" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect width="1200" height="675" rx="30" fill="url(#bg)"/>
+  <rect x="55" y="46" width="1090" height="64" rx="18" fill="#272d40" stroke="#454e6c"/>
+  <circle cx="94" cy="78" r="16" fill="url(#orb)" filter="url(#glow)"/><text x="124" y="85" fill="#f5f2ff" font-family="sans-serif" font-size="24" font-weight="700">2 agents</text>
+  <text x="1030" y="84" fill="#c5bddb" font-family="sans-serif" font-size="17">Choice needed</text>
+  <rect x="55" y="140" width="480" height="480" rx="24" fill="#202638" stroke="#454e6c"/>
+  <text x="88" y="188" fill="#f5f2ff" font-family="sans-serif" font-size="26" font-weight="700">Sessions</text>
+  <g font-family="sans-serif"><rect x="82" y="218" width="426" height="105" rx="16" fill="#302a44"/><circle cx="119" cy="257" r="18" fill="url(#orb)"/><text x="153" y="254" fill="#fff" font-size="20">checkout-service</text><text x="153" y="282" fill="#b8afcc" font-size="15">OMP · implementing · 4 of 7 tasks</text>
+  <rect x="82" y="340" width="426" height="105" rx="16" fill="#3a292f"/><circle cx="119" cy="379" r="18" fill="#ef5350" fill-opacity=".75"/><text x="153" y="376" fill="#fff" font-size="20">design-system</text><text x="153" y="404" fill="#efb7b5" font-size="15">Hermes · blocked · input required</text></g>
+  <text x="88" y="493" fill="#b8afcc" font-family="sans-serif" font-size="17">Read-only monitoring. Local journals.</text>
+  <rect x="565" y="140" width="580" height="480" rx="24" fill="#202638" stroke="#454e6c"/>
+  <text x="598" y="188" fill="#f5f2ff" font-family="sans-serif" font-size="26" font-weight="700">Full session chat</text>
+  <rect x="598" y="218" width="514" height="72" rx="14" fill="#292f43"/><text x="620" y="248" fill="#a99ae0" font-family="sans-serif" font-size="15" font-weight="700">YOU</text><text x="620" y="274" fill="#f5f2ff" font-family="sans-serif" font-size="18">Fix the failing release workflow.</text>
+  <rect x="598" y="306" width="514" height="178" rx="14" fill="#292f43"/><text x="620" y="337" fill="#cbbcff" font-family="sans-serif" font-size="15" font-weight="700">AGENT</text><text x="620" y="370" fill="#f5f2ff" font-family="sans-serif" font-size="18">Inspecting workflow logs</text><text x="620" y="402" fill="#b8afcc" font-family="monospace" font-size="15">Tool started · read</text><text x="620" y="432" fill="#b8afcc" font-family="monospace" font-size="15">Task update · 3 of 5 complete</text><text x="620" y="462" fill="#d8d2e7" font-family="sans-serif" font-size="17">The native lint now gates releases.</text>
+  <rect x="598" y="510" width="410" height="62" rx="14" fill="#171b28" stroke="#454e6c"/><text x="620" y="548" fill="#8f96ad" font-family="sans-serif" font-size="17">Continue with full harness capabilities…</text><rect x="1024" y="510" width="88" height="62" rx="14" fill="#7657d6"/><text x="1044" y="548" fill="#fff" font-family="sans-serif" font-size="17" font-weight="700">Send</text>
+</svg>

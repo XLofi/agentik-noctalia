@@ -1,0 +1,81 @@
+name: Signed beta release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Beta tag, for example v0.1.0-beta.58
+        required: true
+        type: string
+      notes:
+        description: Release notes
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+concurrency:
+  group: beta-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - name: Validate beta version
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          [[ "$RELEASE_TAG" =~ ^v([0-9]+\.[0-9]+\.[0-9]+)-beta\.([0-9]+)$ ]]
+          BASE_VERSION="${BASH_REMATCH[1]}"
+          python3 - "$BASE_VERSION" <<'PY'
+          import sys
+          import tomllib
+          with open("plugin.toml", "rb") as manifest:
+              actual = tomllib.load(manifest)["version"]
+          if actual != sys.argv[1]:
+              raise SystemExit(f"tag base {sys.argv[1]} does not match plugin version {actual}")
+          PY
+          ! git rev-parse --verify --quiet "refs/tags/$RELEASE_TAG"
+      - name: Verify client
+        run: |
+          python3 -m unittest discover -s tests -v
+          python3 scripts/check_manifest.py
+          python3 scripts/check_repository.py
+      - name: Build and verify release archive
+        run: |
+          mkdir -p dist
+          git archive --format=tar.gz --prefix=agentik-noctalia/ -o dist/agentik-noctalia.tar.gz HEAD
+          python3 scripts/check_release_archive.py dist/agentik-noctalia.tar.gz
+          (cd dist && sha256sum agentik-noctalia.tar.gz > agentik-noctalia.tar.gz.sha256)
+      - name: Sign build provenance
+        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3
+        with:
+          subject-path: dist/agentik-noctalia.tar.gz
+      - name: Verify signed provenance
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh attestation verify dist/agentik-noctalia.tar.gz --repo "$GITHUB_REPOSITORY"
+      - name: Publish prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_NOTES: ${{ inputs.notes }}
+        run: |
+          gh release create "$RELEASE_TAG" \
+            --target "$GITHUB_SHA" \
+            --title "Agentik ${RELEASE_TAG#v}" \
+            --notes "$RELEASE_NOTES" \
+            --prerelease \
+            dist/agentik-noctalia.tar.gz \
+            dist/agentik-noctalia.tar.gz.sha256
