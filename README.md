@@ -65,7 +65,7 @@ Agentik does not use a remote service and does not send session journals anywher
 - **Hermes Agent:** detects a live `hermes` process under the current user, reads `~/.hermes/state.db` in SQLite read-only mode, and reads `~/.hermes/provider_models_cache.json` for local model choices. Hermes is ignored when it is not installed or running.
 - **Cache:** generates the attributed orb animation pack and writes incremental journal metadata below `${XDG_CACHE_HOME:-~/.cache}/agentik/`.
 - **Chat state:** writes selection, lifecycle, locks, and owner-only run logs below `${XDG_STATE_HOME:-~/.local/state}/agentik/chat`.
-- **Project access:** monitoring does not read project files. **Open project directory** calls `xdg-open`. A chat or terminal action intentionally starts the chosen harness in the selected project directory; that harness retains its normal filesystem permissions, tools, provider configuration, and network policy.
+- **Project access:** monitoring does not read project files. Journal-derived project actions accept only normalized absolute filesystem paths; URL schemes, relative paths, and option-like values are discarded. **Open project directory** calls `xdg-open` with the path as one argv value. A chat or terminal action intentionally starts the chosen harness in the selected project directory; that harness retains its normal filesystem permissions, tools, provider configuration, and network policy.
 
 Environment overrides used for development and controlled deployments are `AGENTIK_STATE_DIR`, `AGENTIK_SESSIONS_DIR`, `AGENTIK_JOURNAL_INDEX`, `AGENTIK_TERMINAL`, `OMP_BIN`, `HERMES_BIN`, and `HERMES_HOME`.
 

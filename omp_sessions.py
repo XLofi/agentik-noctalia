@@ -45,6 +45,19 @@ def tail_lines(path: Path, limit: int = 96) -> list[str]:
         return journal.read().decode("utf-8", errors="replace").splitlines()[-limit:]
 
 
+def local_project_directory(value: str) -> str | None:
+    """Accept only absolute filesystem paths from model-authored tool records."""
+    if "\0" in value:
+        return None
+    try:
+        candidate = Path(value).expanduser()
+        if not candidate.is_absolute():
+            return None
+        return str(candidate.resolve(strict=False))
+    except (OSError, RuntimeError):
+        return None
+
+
 def tool_cwd(record: dict) -> str | None:
     message = record.get("message")
     if not isinstance(message, dict):
@@ -57,7 +70,7 @@ def tool_cwd(record: dict) -> str | None:
             continue
         arguments = item.get("arguments")
         if isinstance(arguments, dict) and isinstance(arguments.get("cwd"), str):
-            return arguments["cwd"]
+            return local_project_directory(arguments["cwd"])
     return None
 
 

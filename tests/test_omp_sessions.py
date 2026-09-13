@@ -36,6 +36,18 @@ class SessionCollectorTests(unittest.TestCase):
             {"/work/$(touch /tmp/agentik_poc)", "project"},
         )
 
+    def test_tool_cwd_accepts_only_absolute_local_paths(self) -> None:
+        def record(cwd: str) -> dict:
+            return {"message": {"content": [{"type": "toolCall", "arguments": {"cwd": cwd}}]}}
+
+        for value in ("https://attacker.example/project", "../project", "--help", "~agentik-missing/project"):
+            with self.subTest(value=value):
+                self.assertIsNone(omp_sessions.tool_cwd(record(value)))
+        self.assertEqual(
+            omp_sessions.tool_cwd(record("/work/$(touch /tmp/agentik_poc)")),
+            "/work/$(touch /tmp/agentik_poc)",
+        )
+
     def test_current_todo_is_exposed_as_active_task(self) -> None:
         result = self.collect([
             {"message": {"role": "assistant", "content": [{
