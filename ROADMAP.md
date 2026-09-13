@@ -4,11 +4,11 @@ Agentik is one free, MIT-licensed Noctalia plugin maintained in this repository.
 
 ## Community submission
 
-- Submit `notfinaldev/agentik-noctalia` to [`noctalia-dev/community-plugins`](https://github.com/noctalia-dev/community-plugins).
+- Submit `notfinaldev/agentik` to [`noctalia-dev/community-plugins`](https://github.com/noctalia-dev/community-plugins).
 - Keep the bundled Python runtime readable and document every process, filesystem, and network boundary.
 - Preserve Jakub Antalik's Thinking Orbs copyright and MIT notice in source and distributions.
-- Ship the optimized 30 FPS pack; permit users to generate an optional attributed 60 FPS pack locally.
-- Keep `plugin_api = 21` until the declarative UI no longer needs API 21 scroll behavior.
+- Generate the attributed 30 FPS pack in the user's cache; permit users to replace it with an optional attributed 60 FPS pack.
+- Keep `plugin_api = 24` while command execution uses argv tables.
 - Build the exact upstream directory with `scripts/build_submission.py`.
 
 ## Quality

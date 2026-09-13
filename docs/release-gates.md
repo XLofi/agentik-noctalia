@@ -9,8 +9,8 @@ python3 -m unittest discover -s tests -v
 python3 -m py_compile build_orbs.py chat_bridge.py omp_sessions.py scripts/build_submission.py scripts/check_manifest.py scripts/check_repository.py scripts/check_release_archive.py scripts/luau_tests.py
 python3 scripts/check_manifest.py
 python3 scripts/check_repository.py
-git archive --format=tar.gz --prefix=agentik-noctalia/ -o /tmp/agentik-noctalia.tar.gz HEAD
-python3 scripts/check_release_archive.py /tmp/agentik-noctalia.tar.gz
+git archive --format=tar.gz --prefix=agentik/ -o /tmp/agentik.tar.gz HEAD
+python3 scripts/check_release_archive.py /tmp/agentik.tar.gz
 python3 scripts/luau_tests.py
 noctalia plugins lint .
 ```
@@ -21,9 +21,9 @@ CI must run the same native Noctalia lint against a pinned Noctalia version. The
 
 - Changelog covers every user-visible behavior and compatibility change.
 - `plugin.toml`, README, and changelog agree on the release version.
-- Generated `orbs/` were regenerated when renderer inputs changed and obsolete frames were pruned.
+- `build_orbs.py` regenerates a complete attributed cache pack and prunes obsolete frames.
 - Archive is made from the immutable release commit; archive and checksum are attached to the GitHub release.
-- GitHub build provenance signs the archive digest. `gh attestation verify agentik-noctalia.tar.gz --repo XLofi/agentik-noctalia` succeeds before publication.
+- GitHub build provenance signs the archive digest. `gh attestation verify agentik.tar.gz --repo XLofi/agentik-noctalia` succeeds before publication.
 - Native compositor smoke: load the panel, open Chat, start a harmless local harness turn, verify streamed status, cancel a slow turn, and verify recovery to idle. Record why this is skipped only when no compositor session is available.
 - Security review covers command construction, file permissions, PID/process-group handling, dependency notices, and no secret material in assets, logs, or release archives.
 

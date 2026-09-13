@@ -1,9 +1,0 @@
-{
-  "copyright": "Copyright (c) 2026 Jakub Antalik",
-  "fps": 30,
-  "frame_count": 60,
-  "license": "MIT",
-  "loop_seconds": 2,
-  "schema_version": 1,
-  "source": "https://github.com/Jakubantalik/thinking-orbs"
-}

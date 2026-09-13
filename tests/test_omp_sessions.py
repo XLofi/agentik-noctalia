@@ -28,6 +28,14 @@ class SessionCollectorTests(unittest.TestCase):
         self.assertIsNotNone(result)
         return result
 
+    def test_excluded_projects_decode_single_argv_value(self) -> None:
+        value = "/work/$(touch /tmp/agentik_poc), project"
+
+        self.assertEqual(
+            omp_sessions.excluded_projects(value.encode().hex()),
+            {"/work/$(touch /tmp/agentik_poc)", "project"},
+        )
+
     def test_current_todo_is_exposed_as_active_task(self) -> None:
         result = self.collect([
             {"message": {"role": "assistant", "content": [{

@@ -17,8 +17,8 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
 
 ### Changed
 
-- Noctalia-compatible stable manifest versioning with supported discovery tags and plugin API 21.
-- Generated 30 FPS orb SVGs use compact exact numeric and color serialization, reducing asset bytes without changing rendered pixels.
+- The permanent plugin ID is `notfinaldev/agentik`; Noctalia plugin API 24 enables shell-free argv command execution.
+- The attributed orb pack is generated into the user's cache on first run instead of shipping thousands of generated files.
 - Idle monitoring backs off from one second to five seconds and unchanged journals avoid cache rewrites.
 
 ### Fixed
@@ -27,3 +27,4 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
 - Cancel waits for process-group termination and protects against PID reuse.
 - Stale workers cannot overwrite a newer run.
 - Dead workers recover to an explicit orphaned state instead of leaving permanent busy state.
+- Clipboard, project-directory, collector, and chat commands no longer interpolate values into shell command strings.

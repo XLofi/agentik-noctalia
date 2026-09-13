@@ -55,17 +55,17 @@ jobs:
       - name: Build and verify release archive
         run: |
           mkdir -p dist
-          git archive --format=tar.gz --prefix=agentik-noctalia/ -o dist/agentik-noctalia.tar.gz HEAD
-          python3 scripts/check_release_archive.py dist/agentik-noctalia.tar.gz
-          (cd dist && sha256sum agentik-noctalia.tar.gz > agentik-noctalia.tar.gz.sha256)
+          git archive --format=tar.gz --prefix=agentik/ -o dist/agentik.tar.gz HEAD
+          python3 scripts/check_release_archive.py dist/agentik.tar.gz
+          (cd dist && sha256sum agentik.tar.gz > agentik.tar.gz.sha256)
       - name: Sign build provenance
         uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3
         with:
-          subject-path: dist/agentik-noctalia.tar.gz
+          subject-path: dist/agentik.tar.gz
       - name: Verify signed provenance
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh attestation verify dist/agentik-noctalia.tar.gz --repo "$GITHUB_REPOSITORY"
+        run: gh attestation verify dist/agentik.tar.gz --repo "$GITHUB_REPOSITORY"
       - name: Publish prerelease
         env:
           GH_TOKEN: ${{ github.token }}
@@ -77,5 +77,5 @@ jobs:
             --title "Agentik ${RELEASE_TAG#v}" \
             --notes "$RELEASE_NOTES" \
             --prerelease \
-            dist/agentik-noctalia.tar.gz \
-            dist/agentik-noctalia.tar.gz.sha256
+            dist/agentik.tar.gz \
+            dist/agentik.tar.gz.sha256

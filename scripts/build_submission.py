@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 FILES = (
     "LICENSE",
     "README.md",
+    "build_orbs.py",
     "THIRD_PARTY_LICENSES",
     "chat_bridge.py",
     "desktop_widget.luau",
@@ -21,7 +22,7 @@ FILES = (
     "thumbnail.webp",
     "widget.luau",
 )
-DIRECTORIES = ("orbs", "translations")
+DIRECTORIES = ("translations",)
 
 
 def build(destination: Path) -> Path:
@@ -49,7 +50,7 @@ def main() -> None:
         "destination",
         nargs="?",
         type=Path,
-        default=ROOT / "dist" / "agentik-noctalia",
+        default=ROOT / "dist" / "agentik",
     )
     args = parser.parse_args()
     print(build(args.destination))

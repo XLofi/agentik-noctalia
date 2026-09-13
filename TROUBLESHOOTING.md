@@ -19,7 +19,7 @@ Confirm OMP journals exist under `${OMP_HOME:-~/.omp}/agent/sessions` and that t
 Run the collector directly to inspect its normalized output:
 
 ```sh
-python3 ~/.local/share/noctalia/plugins/agentik-noctalia/omp_sessions.py
+python3 ~/.local/share/noctalia/plugins/agentik/omp_sessions.py
 ```
 
 ## Chat reports an orphaned run
@@ -39,14 +39,14 @@ A terminal currently owns the selected resumable journal. Continue in that termi
 A config reload does not reparse `plugin.toml`. Disable and enable the plugin, or restart Noctalia:
 
 ```sh
-noctalia msg plugins disable notfinaldev/agentik-noctalia
-noctalia msg plugins enable notfinaldev/agentik-noctalia
+noctalia msg plugins disable notfinaldev/agentik
+noctalia msg plugins enable notfinaldev/agentik
 ```
 
 ## Validate an installation
 
 ```sh
-cd ~/.local/share/noctalia/plugins/agentik-noctalia
+cd ~/.local/share/noctalia/plugins/agentik
 noctalia plugins lint .
 python3 scripts/check_manifest.py
 python3 -m unittest discover -s tests

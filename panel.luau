@@ -1,13 +1,29 @@
-local COMMUNITY_FRAME_RATE = 30
-local COMMUNITY_FRAME_COUNT = 60
-local AGENTIK_FRAME_RATE = 60
-local AGENTIK_FRAME_COUNT = 120
-local AGENTIK_ORB_DIR = noctalia.pluginDir() .. "/orbs-agentik-60"
-local USE_AGENTIK_ORBS = noctalia.fileExists(AGENTIK_ORB_DIR .. "/manifest.json")
-local FRAME_RATE = USE_AGENTIK_ORBS and AGENTIK_FRAME_RATE or COMMUNITY_FRAME_RATE
-local FRAME_COUNT = USE_AGENTIK_ORBS and AGENTIK_FRAME_COUNT or COMMUNITY_FRAME_COUNT
-local ORB_DIR = USE_AGENTIK_ORBS and AGENTIK_ORB_DIR or (noctalia.pluginDir() .. "/orbs")
-local PANEL_REDRAW_INTERVAL_MS = 1000 / FRAME_RATE
+local home = noctalia.getenv("HOME") or ""
+local cache_home = noctalia.getenv("XDG_CACHE_HOME")
+if cache_home == nil or cache_home == "" then cache_home = home .. "/.cache" end
+local ORB_DIR = cache_home .. "/agentik/orbs"
+local FRAME_RATE = 30
+local FRAME_COUNT = 60
+local ORBS_READY = false
+local orb_config = noctalia.state.get("agentik_orbs")
+if type(orb_config) == "table" then
+    ORB_DIR = tostring(orb_config.directory or ORB_DIR)
+    FRAME_RATE = tonumber(orb_config.fps) or FRAME_RATE
+    FRAME_COUNT = tonumber(orb_config.frame_count) or FRAME_COUNT
+    ORBS_READY = orb_config.ready == true
+end
+local function panel_redraw_interval_ms()
+    return 1000 / FRAME_RATE
+end
+
+local function orb_image(props)
+    if ORBS_READY then return ui.image(props) end
+    return ui.glyph({
+        name = "sparkles",
+        size = props.width or 20,
+        color = "primary",
+    })
+end
 local CHAT_RENDERED_EVENTS = 12
 local chat_event_limit = CHAT_RENDERED_EVENTS
 local sessions = noctalia.state.get("sessions") or { active = 0, sessions = {} }
@@ -191,7 +207,7 @@ local function elapsed(seconds)
 end
 
 local function copy_response(response)
-    noctalia.runAsync("wl-copy " .. string.format("%q", response))
+    noctalia.runAsync({"wl-copy", response})
 end
 
 local function hex_encode(value)
@@ -411,7 +427,7 @@ local function load_chat(scroll_to_bottom)
     chat_busy = true
     panel.setNeedsFrameTick(true)
     noctalia.runAsync(
-        "python3 " .. string.format("%q", chat_bridge) .. " load",
+        {"python3", chat_bridge, "load"},
         apply_chat_result,
         chat_bridge_timeout_ms
     )
@@ -430,7 +446,7 @@ local function submit_chat(value)
     chat_scroll_revision = chat_scroll_revision + 1
     render()
     noctalia.runAsync(
-        "python3 " .. string.format("%q", chat_bridge) .. " send " .. hex_encode(message),
+        {"python3", chat_bridge, "send", hex_encode(message)},
         apply_chat_result,
         chat_bridge_timeout_ms
     )
@@ -443,7 +459,7 @@ local function select_chat_session(path)
     panel.setNeedsFrameTick(true)
     render()
     noctalia.runAsync(
-        "python3 " .. string.format("%q", chat_bridge) .. " select " .. hex_encode(path),
+        {"python3", chat_bridge, "select", hex_encode(path)},
         apply_chat_result,
         chat_bridge_timeout_ms
     )
@@ -459,7 +475,7 @@ local function open_session_chat(session_id)
     chat_error = nil
     chat_scroll_to_bottom_on_load = true
     noctalia.runAsync(
-        "python3 " .. string.format("%q", chat_bridge) .. " select-id " .. hex_encode(session_id),
+        {"python3", chat_bridge, "select-id", hex_encode(session_id)},
         function(result)
             apply_chat_result(result)
             if chat_selected then render() end
@@ -478,10 +494,14 @@ local function start_chat_session(cwd)
     chat_feed_revision = nil
     render()
     noctalia.runAsync(
-        "python3 " .. string.format("%q", chat_bridge)
-            .. " new " .. hex_encode(path)
-            .. " " .. hex_encode(chat_new_harness)
-            .. " " .. hex_encode(chat_new_model),
+        {
+            "python3",
+            chat_bridge,
+            "new",
+            hex_encode(path),
+            hex_encode(chat_new_harness),
+            hex_encode(chat_new_model),
+        },
         apply_chat_result,
         chat_bridge_timeout_ms
     )
@@ -497,7 +517,7 @@ local function reset_chat()
     chat_input_revision = chat_input_revision + 1
     render()
     noctalia.runAsync(
-        "python3 " .. string.format("%q", chat_bridge) .. " reset",
+        {"python3", chat_bridge, "reset"},
         apply_chat_result,
         chat_bridge_timeout_ms
     )
@@ -506,7 +526,7 @@ end
 local function cancel_chat()
     if not chat_busy then return end
     noctalia.runAsync(
-        "python3 " .. string.format("%q", chat_bridge) .. " cancel",
+        {"python3", chat_bridge, "cancel"},
         apply_chat_result,
         chat_bridge_timeout_ms
     )
@@ -517,7 +537,7 @@ local function open_chat_terminal()
     chat_busy = true
     chat_error = nil
     noctalia.runAsync(
-        "python3 " .. string.format("%q", chat_bridge) .. " open",
+        {"python3", chat_bridge, "open"},
         function(result)
             local payload = noctalia.json.decode(result.stdout or "")
             chat_busy = false
@@ -1098,7 +1118,7 @@ local function chat_loading_view()
         gap = 12,
         padding = 24,
     }, {
-        ui.image({
+        orb_image({
             path = ORB_DIR .. "/working-64-" .. tostring(frame) .. ".svg",
             width = 64,
             height = 64,
@@ -1184,7 +1204,7 @@ local function chat_view()
             radius = 10,
             fill = "secondary/0.10",
         }, {
-            ui.image({
+            orb_image({
                 path = ORB_DIR .. "/" .. state_of(item) .. "-20-" .. tostring(frame) .. ".svg",
                 width = 16,
                 height = 16,
@@ -1212,7 +1232,7 @@ local function chat_view()
             radius = 10,
             fill = "surface_variant/0.32",
         }, {
-            item ~= nil and ui.image({
+            item ~= nil and orb_image({
                 path = ORB_DIR .. "/" .. state_of(item) .. "-20-" .. tostring(frame) .. ".svg",
                 width = 24,
                 height = 24,
@@ -1383,7 +1403,7 @@ local function session_row(item, show_task, show_attention)
     end
 
     local row = {
-        ui.image({
+        orb_image({
             path = ORB_DIR .. "/" .. state_of(item) .. "-20-" .. tostring(frame) .. ".svg",
             width = 20,
             height = 20,
@@ -1409,7 +1429,7 @@ local function session_row(item, show_task, show_attention)
         tooltip = noctalia.tr("ui.open_project"),
         onClick = function()
             if item.cwd then
-                noctalia.runAsync("xdg-open " .. string.format("%q", item.cwd))
+                noctalia.runAsync({"xdg-open", item.cwd})
             end
         end,
     }))
@@ -1526,7 +1546,7 @@ render = function()
     local header_icon
     if #rows == 1 then
         local header_frame = frame
-        header_icon = ui.image({
+        header_icon = orb_image({
             path = ORB_DIR .. "/" .. state_of(rows[1]) .. "-64-" .. tostring(header_frame) .. ".svg",
             width = 42,
             height = 42,
@@ -1636,12 +1656,13 @@ function onFrameTick(delta_ms)
     if panel_mode == "chat" and advance_chat_stream_animation(elapsed_ms) then
         panel_stream_dirty = true
     end
+    local redraw_interval_ms = panel_redraw_interval_ms()
     if panel_stream_dirty and not chat_stream_animating() then
-        panel_redraw_credit_ms = PANEL_REDRAW_INTERVAL_MS
+        panel_redraw_credit_ms = redraw_interval_ms
     end
     panel_redraw_credit_ms = panel_redraw_credit_ms + elapsed_ms
-    if panel_redraw_credit_ms < PANEL_REDRAW_INTERVAL_MS then return end
-    panel_redraw_credit_ms = panel_redraw_credit_ms - PANEL_REDRAW_INTERVAL_MS
+    if panel_redraw_credit_ms < redraw_interval_ms then return end
+    panel_redraw_credit_ms = panel_redraw_credit_ms - redraw_interval_ms
     local next_frame = frame_index()
     local animated = panel_stream_dirty
     panel_stream_dirty = false
@@ -1688,6 +1709,25 @@ noctalia.state.watch("sessions", function(value)
     end
 end)
 
+
+noctalia.state.watch("agentik_orbs", function(value)
+    if type(value) ~= "table" then return end
+    local fps = tonumber(value.fps)
+    local frame_count = tonumber(value.frame_count)
+    if value.ready ~= true
+        or type(value.directory) ~= "string"
+        or (fps ~= 30 and fps ~= 60)
+        or frame_count ~= fps * 2
+    then
+        return
+    end
+    ORB_DIR = value.directory
+    FRAME_RATE = fps
+    FRAME_COUNT = frame_count
+    ORBS_READY = true
+    frame = frame_index()
+    if open then render() end
+end)
 noctalia.state.watch("agentik_chat_status", function(result)
     if type(result) == "table" then apply_chat_status(result) end
 end)

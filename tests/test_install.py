@@ -27,7 +27,7 @@ class InstallerSecurityTests(unittest.TestCase):
         fake_curl.chmod(0o755)
 
     def write_release(self, members: dict[str, bytes]) -> None:
-        archive_path = self.assets / "agentik-noctalia.tar.gz"
+        archive_path = self.assets / "agentik.tar.gz"
         with tarfile.open(archive_path, "w:gz") as archive:
             for name, content in members.items():
                 info = tarfile.TarInfo(name)
@@ -35,8 +35,8 @@ class InstallerSecurityTests(unittest.TestCase):
                 info.mode = 0o644
                 archive.addfile(info, io.BytesIO(content))
         digest = hashlib.sha256(archive_path.read_bytes()).hexdigest()
-        (self.assets / "agentik-noctalia.tar.gz.sha256").write_text(
-            f"{digest}  agentik-noctalia.tar.gz\n", encoding="ascii"
+        (self.assets / "agentik.tar.gz.sha256").write_text(
+            f"{digest}  agentik.tar.gz\n", encoding="ascii"
         )
 
     def run_installer(self) -> subprocess.CompletedProcess[str]:
@@ -52,7 +52,7 @@ class InstallerSecurityTests(unittest.TestCase):
         )
 
     def test_installs_verified_safe_archive(self) -> None:
-        self.write_release({"agentik-noctalia/plugin.toml": b'name = "Agentik"\n'})
+        self.write_release({"agentik/plugin.toml": b'name = "Agentik"\n'})
         result = self.run_installer()
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertTrue((self.root / "installed/plugin.toml").is_file())
@@ -60,8 +60,8 @@ class InstallerSecurityTests(unittest.TestCase):
     def test_rejects_archive_path_traversal(self) -> None:
         escaped = self.root / "escaped"
         self.write_release({
-            "agentik-noctalia/plugin.toml": b'name = "Agentik"\n',
-            "agentik-noctalia/../../escaped": b"private\n",
+            "agentik/plugin.toml": b'name = "Agentik"\n',
+            "agentik/../../escaped": b"private\n",
         })
         result = self.run_installer()
         self.assertNotEqual(result.returncode, 0)
@@ -69,9 +69,9 @@ class InstallerSecurityTests(unittest.TestCase):
         self.assertFalse(escaped.exists())
 
     def test_rejects_checksum_for_another_filename(self) -> None:
-        self.write_release({"agentik-noctalia/plugin.toml": b'name = "Agentik"\n'})
-        checksum = self.assets / "agentik-noctalia.tar.gz.sha256"
-        checksum.write_text(checksum.read_text().replace("agentik-noctalia.tar.gz", "other.tar.gz"))
+        self.write_release({"agentik/plugin.toml": b'name = "Agentik"\n'})
+        checksum = self.assets / "agentik.tar.gz.sha256"
+        checksum.write_text(checksum.read_text().replace("agentik.tar.gz", "other.tar.gz"))
         result = self.run_installer()
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("invalid release checksum manifest", result.stderr)

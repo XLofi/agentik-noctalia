@@ -42,7 +42,7 @@ STUBS = """\
 -- Agentik Luau test harness: stubbed runtime globals.
 local T = {
     config = {},
-    state = {},
+    state = { @@ORB_STATE@@ },
     watch = {},
     notifies = {},
     trees = {},
@@ -93,12 +93,16 @@ noctalia = {
     end,
     setUpdateInterval = function(ms) T.updateIntervalMs = ms end,
     pluginDir = function() return "/plugin" end,
+    getenv = function(key)
+        if key == "HOME" then return "/home/test" end
+        return nil
+    end,
     fileExists = function(path) return T.files[tostring(path)] == true end,
     notify = function(title, body)
         T.notifies[#T.notifies + 1] = { title = tostring(title), body = tostring(body) }
     end,
     runAsync = function(cmd, cb, timeoutMs)
-        T.runAsyncCalls[#T.runAsyncCalls + 1] = tostring(cmd)
+        T.runAsyncCalls[#T.runAsyncCalls + 1] = cmd
         T.runAsyncTimeouts[#T.runAsyncTimeouts + 1] = timeoutMs
         if cb and T.deferAsync then
             T.pendingAsyncCallbacks[#T.pendingAsyncCallbacks + 1] = cb
@@ -169,6 +173,20 @@ local function collect_image_paths(node, out)
 end
 T.imagePaths = function(tree)
     return collect_image_paths(tree, {})
+end
+
+T.commandText = function(command)
+    if type(command) ~= "table" then return tostring(command) end
+    local values = {}
+    for index, value in ipairs(command) do values[index] = tostring(value) end
+    return table.concat(values, " ")
+end
+T.commandEquals = function(command, expected)
+    if type(command) ~= "table" or #command ~= #expected then return false end
+    for index, value in ipairs(expected) do
+        if command[index] ~= value then return false end
+    end
+    return true
 end
 
 local function collect_buttons(node, text, out)
@@ -252,17 +270,28 @@ assert_equals(#T.notifies, 0, "no toast on load")
 """,
     ),
     (
+        "widget-orbs-loading",
+        "widget.luau",
+        """
+assert_equals(#T.nodesOfKind(T.trees.widget, "image"), 0,
+    "first render does not reference an incomplete cache pack")
+assert_true(#T.nodesOfKind(T.trees.widget, "glyph") >= 1,
+    "first render keeps a static fallback visible while the pack is generated")
+""",
+    ),
+    (
         "widget-agentik-60",
         "widget.luau",
         """
+T.watch.agentik_orbs({ ready = true, directory = "/cache/agentik/orbs", fps = 60, frame_count = 120 })
 T.state.sessions = { active = 1, sessions = {
     { id = "a", project = "proj-a", attention = "active", state = "working" },
 } }
 T.nowMs = 750
 T.watch.sessions(T.state.sessions)
 local paths = table.concat(T.imagePaths(T.trees.widget), "|")
-assert_true(paths:find("/orbs-agentik-60/working-20-45.svg", 1, true) ~= nil,
-    "local Agentik pack selects its 60 FPS frame and asset directory")
+assert_true(paths:find("/cache/agentik/orbs/working-20-45.svg", 1, true) ~= nil,
+    "generated cache pack selects its 60 FPS frame and asset directory")
 """,
     ),
     (
@@ -415,7 +444,7 @@ assert_equals(texts[1], "0", "quiet session is excluded from active count")
 assert_equals(texts[2], "idle 31s", "quiet session reports its idle duration")
 assert_true(T.trees.widget.children[1].props.path:find("/working-20-0.svg", 1, true) ~= nil,
     "quiet session starts on its current animation frame")
-assert_equals(T.updateIntervalMs, 16, "quiet session remains animated")
+assert_equals(T.updateIntervalMs, 33, "quiet session follows the generated pack cadence")
 T.nowMs = 750
 update()
 assert_true(T.trees.widget.children[1].props.path:find("/working-20-22.svg", 1, true) ~= nil,
@@ -540,7 +569,7 @@ assert_equals(T.trees.widget.children[1].kind, "image", "done session replaces t
 assert_true(T.trees.widget.children[1].props.path:find("/done-20-15.svg", 1, true) ~= nil,
     "done session uses the animated completion orb")
 assert_equals(T.labelTexts(T.trees.widget)[1], "0", "done session remains outside the active count")
-assert_equals(T.updateIntervalMs, 16, "done orb animates at frame cadence")
+assert_equals(T.updateIntervalMs, 33, "done orb follows the generated pack cadence")
 T.nowMs = 750
 update()
 assert_true(T.trees.widget.children[1].props.path:find("/done-20-22.svg", 1, true) ~= nil,
@@ -583,7 +612,7 @@ assert_true(found, "empty state label shown")
         "panel.luau",
         """
 T.state.sessions = { active = 2, sessions = {
-    { id = "a", project = "proj-a", task = "task a", attention = "blocked", state = "working", duration = 60, idle = 5, started_at = 1, last_activity_at = 56 },
+    { id = "a", project = "proj-a", cwd = "/work/$(touch /tmp/agentik_poc)", task = "task a", attention = "blocked", state = "working", duration = 60, idle = 5, started_at = 1, last_activity_at = 56 },
     { id = "b", project = "proj-b", task = "task b", attention = "active", state = "composing", duration = 30, idle = 5 },
 } }
 onOpen()
@@ -604,6 +633,15 @@ for _, row in ipairs(T.nodesOfKind(T.trees.panel, "row")) do
 end
 assert_equals(styled_rows, 2, "session rows use the polished card treatment")
 assert_true(blocked_tint, "blocked session uses an attention tint")
+local folder = nil
+for _, button in ipairs(T.nodesOfKind(T.trees.panel, "button")) do
+    if button.props.glyph == "folder-open" and button.props.enabled == true then folder = button end
+end
+assert_true(folder ~= nil, "session row exposes project directory action")
+folder.props.onClick()
+assert_true(T.commandEquals(T.runAsyncCalls[#T.runAsyncCalls],
+    {"xdg-open", "/work/$(touch /tmp/agentik_poc)"}),
+    "project path is passed as one argv value without shell evaluation")
 local header = T.trees.panel.children[1]
 assert_equals(header.props.fill, "surface_variant/0.30", "header uses a compact surface")
 assert_equals(header.props.radius, 12, "header has a compact rounded treatment")
@@ -742,9 +780,9 @@ chat.props.onClick()
 assert_equals(T.flags.panelNeedsFrameTick, false,
     "chat mode disables continuous frame renders")
 assert_equals(T.runAsyncTimeouts[#T.runAsyncTimeouts], 60000, "panel load outlives the default async timeout")
-assert_true(T.runAsyncCalls[#T.runAsyncCalls]:find("chat_bridge.py", 1, true) ~= nil
-    and T.runAsyncCalls[#T.runAsyncCalls]:find(" load", 1, true) ~= nil,
-    "panel loads real OMP session targets")
+assert_true(T.commandEquals(T.runAsyncCalls[#T.runAsyncCalls],
+    {"python3", "/plugin/chat_bridge.py", "load"}),
+    "panel loads real OMP session targets without a shell")
 local selectors = T.nodesOfKind(T.trees.panel, "select")
 assert_equals(#selectors, 1, "panel keeps the model picker as one combined control")
 assert_equals(selectors[1].props.options[1], "Oh My Pi", "panel harness options are populated")
@@ -789,8 +827,9 @@ T.jsonValue = { ok = true, selected = true, title = "Fix project",
     } }
 continue_button.props.onClick()
 assert_equals(T.runAsyncTimeouts[#T.runAsyncTimeouts], 60000, "panel select outlives the default async timeout")
-assert_true(T.runAsyncCalls[#T.runAsyncCalls]:find(" select 2f73657373696f6e732f656e6465642e6a736f6e6c", 1, true) ~= nil,
-    "panel selects the real session journal with hex transport")
+assert_true(T.commandEquals(T.runAsyncCalls[#T.runAsyncCalls],
+    {"python3", "/plugin/chat_bridge.py", "select", "2f73657373696f6e732f656e6465642e6a736f6e6c"}),
+    "panel selects the real session journal with hex argv transport")
 local inputs = T.nodesOfKind(T.trees.panel, "input")
 assert_equals(#inputs, 1, "selected session renders one native message input")
 inputs[1].props.onChange("Hello panel")
@@ -803,8 +842,9 @@ T.jsonValue = { ok = true, selected = true, title = "Fix project",
     } }
 send.props.onClick()
 assert_equals(T.runAsyncTimeouts[#T.runAsyncTimeouts], 60000, "panel send outlives the default async timeout")
-assert_true(T.runAsyncCalls[#T.runAsyncCalls]:find(" send 48656c6c6f2070616e656c", 1, true) ~= nil,
-    "panel message uses shell-safe hex transport")
+assert_true(T.commandEquals(T.runAsyncCalls[#T.runAsyncCalls],
+    {"python3", "/plugin/chat_bridge.py", "send", "48656c6c6f2070616e656c"}),
+    "panel message uses hex argv transport")
 local joined = table.concat(T.labelTexts(T.trees.panel), "|")
 assert_true(joined:find("Hello from OMP", 1, true) ~= nil,
     "real OMP response appears inside the panel")
@@ -819,8 +859,9 @@ T.jsonValue = { ok = true, launched = true, terminal = "ghostty" }
 open_terminal.props.onClick()
 assert_equals(T.runAsyncTimeouts[#T.runAsyncTimeouts], 60000,
     "terminal launch outlives the default async timeout")
-assert_true(T.runAsyncCalls[#T.runAsyncCalls]:find(" open", 1, true) ~= nil,
-    "open-in-terminal invokes the bridge open command")
+assert_true(T.commandEquals(T.runAsyncCalls[#T.runAsyncCalls],
+    {"python3", "/plugin/chat_bridge.py", "open"}),
+    "open-in-terminal invokes the bridge without a shell")
 local sessions_button = nil
 for _, button in ipairs(T.nodesOfKind(T.trees.panel, "button")) do
     if button.props.glyph == "list" then sessions_button = button end
@@ -962,7 +1003,7 @@ local chat = nil
 for _, button in ipairs(T.nodesOfKind(T.trees.panel, "button")) do
     if button.props.glyph == "message-circle" then chat = button end
 end
-local output_text = table.concat({ "line one", "line two", "line three", "line four", "line five", "line six" }, string.char(10))
+local output_text = table.concat({ "line one", "$(touch /tmp/agentik_poc)", "line three", "line four", "line five", "line six" }, string.char(10))
 T.jsonValue = { ok = true, selected = true, title = "Terminal", cwd = "/work", targets = {},
     messages = {}, feed = { reset = true, revision = "1:5", events = {
         { sequence = 1, kind = "user", text = "Inspect the journal" },
@@ -996,15 +1037,16 @@ for _, button in ipairs(T.nodesOfKind(T.trees.panel, "button")) do
 end
 assert_true(output_copy ~= nil and output_toggle ~= nil, "panel renders output copy and expand controls")
 output_copy.props.onClick()
-assert_equals(T.runAsyncCalls[#T.runAsyncCalls], "wl-copy " .. string.format("%q", output_text),
-    "panel copies complete tool output without terminal input")
+assert_true(T.commandEquals(T.runAsyncCalls[#T.runAsyncCalls], {"wl-copy", output_text}),
+    "panel copies complete tool output as one argv value without shell evaluation")
 output_toggle.props.onClick()
 local expanded_output = T.labelsWithText(T.trees.panel, output_text)[1]
 assert_equals(expanded_output.props.maxLines, 6, "panel expands output without refetching")
 local choice = T.buttonsWithText(T.trees.panel, "a")[1]
 assert_true(choice ~= nil, "panel renders choice copy controls")
 choice.props.onClick()
-assert_equals(T.runAsyncCalls[#T.runAsyncCalls], 'wl-copy "a"', "panel choice does not submit to the terminal")
+assert_true(T.commandEquals(T.runAsyncCalls[#T.runAsyncCalls], {"wl-copy", "a"}),
+    "panel choice does not submit to a shell or terminal")
 T.nowMs = 1000
 T.jsonValue = { ok = true, busy = false, feed = { revision = "1:6", events = {
     { sequence = 6, kind = "assistant", text = "Incremental final" },
@@ -1075,20 +1117,32 @@ for _, button in ipairs(T.nodesOfKind(T.trees.panel, "button")) do
 end
 assert_true(copy_code ~= nil, "code inset exposes a copy action")
 copy_code.props.onClick()
-assert_true(T.runAsyncCalls[#T.runAsyncCalls]:find("wl-copy", 1, true) ~= nil,
-    "code copy uses the existing clipboard path")
+local copy_command = T.runAsyncCalls[#T.runAsyncCalls]
+assert_true(type(copy_command) == "table" and #copy_command == 2
+    and copy_command[1] == "wl-copy" and type(copy_command[2]) == "string",
+    "code copy passes source as one clipboard argv value: " .. T.commandText(copy_command))
 """,
     ),
     (
         "monitor-load",
         "monitor.luau",
         """
-assert_true(#T.runAsyncCalls >= 1, "monitor refreshes at load")
-assert_true(T.runAsyncCalls[1]:find("omp_sessions.py") ~= nil, "refresh runs the collector")
+assert_equals(#T.runAsyncCalls, 3, "monitor initializes assets, sessions, and shared chat")
+assert_true(T.commandEquals(T.runAsyncCalls[1],
+    {"python3", "/plugin/build_orbs.py", "--output", "/home/test/.cache/agentik/orbs", "--ensure"}),
+    "monitor generates the attributed cache pack without a shell")
+assert_true(T.commandEquals(T.runAsyncCalls[2], {"python3", "/plugin/omp_sessions.py", ""}),
+    "refresh runs the collector with encoded settings as argv")
 local first = #T.runAsyncCalls
+T.config.excluded_projects = "/work/$(touch /tmp/agentik_poc)"
 update()
 assert_true(#T.runAsyncCalls == first + 2, "update() refreshes sessions and shared chat status")
-assert_true(T.runAsyncCalls[#T.runAsyncCalls]:find("chat_bridge.py") ~= nil, "monitor centralizes chat polling")
+assert_true(T.commandEquals(T.runAsyncCalls[first + 1], {
+    "python3", "/plugin/omp_sessions.py",
+    "2f776f726b2f2428746f756368202f746d702f6167656e74696b5f706f6329",
+}), "excluded project input is hex encoded and passed without a shell")
+assert_true(T.commandEquals(T.runAsyncCalls[#T.runAsyncCalls],
+    {"python3", "/plugin/chat_bridge.py", "status"}), "monitor centralizes chat polling")
 assert_equals(T.updateIntervalMs, 5000, "idle monitor backs off to a five-second cadence")
 """,
     ),
@@ -1227,9 +1281,9 @@ T.jsonValue = { ok = true, selected = false, messages = {}, harnesses = {
       cwd = "/work/old", project = "old", resumable = true },
 } }
 chat.props.onClick()
-assert_true(T.runAsyncCalls[#T.runAsyncCalls]:find("chat_bridge.py", 1, true) ~= nil
-    and T.runAsyncCalls[#T.runAsyncCalls]:find(" load", 1, true) ~= nil,
-    "opening chat loads real OMP session targets")
+assert_true(T.commandEquals(T.runAsyncCalls[#T.runAsyncCalls],
+    {"python3", "/plugin/chat_bridge.py", "load"}),
+    "opening chat loads real OMP session targets without a shell")
 local result_scroller = T.nodesOfKind(T.trees.desktop, "scroll")[1]
 assert_equals(result_scroller.props.height, 360, "desktop result panel is extended for recent sessions")
 local selectors = T.nodesOfKind(T.trees.desktop, "select")
@@ -1261,9 +1315,10 @@ T.jsonValue = { ok = true, selected = true, title = "New Hermes Agent session",
     harness = "hermes", model = "ollama/custom-model", cwd = "/work/new", targets = {}, messages = {} }
 start.props.onClick()
 assert_equals(T.runAsyncTimeouts[#T.runAsyncTimeouts], 60000, "desktop start outlives the default async timeout")
-assert_true(T.runAsyncCalls[#T.runAsyncCalls]:find(
-    " new 2f776f726b2f6e6577 6865726d6573 6f6c6c616d612f637573746f6d2d6d6f64656c", 1, true) ~= nil,
-    "desktop starts a typed model name in the selected project")
+assert_true(T.commandEquals(T.runAsyncCalls[#T.runAsyncCalls], {
+    "python3", "/plugin/chat_bridge.py", "new", "2f776f726b2f6e6577",
+    "6865726d6573", "6f6c6c616d612f637573746f6d2d6d6f64656c",
+}), "desktop starts a typed model with hex argv transport")
 inputs = T.nodesOfKind(T.trees.desktop, "input")
 inputs[1].props.onChange("Hello")
 local send = T.buttonsWithText(T.trees.desktop, "Send")[1]
@@ -1275,8 +1330,9 @@ T.jsonValue = { ok = true, selected = true, title = "New OMP session",
     } }
 send.props.onClick()
 assert_equals(T.runAsyncTimeouts[#T.runAsyncTimeouts], 60000, "desktop send outlives the default async timeout")
-assert_true(T.runAsyncCalls[#T.runAsyncCalls]:find(" send 48656c6c6f", 1, true) ~= nil,
-    "message is hex encoded before crossing the shell")
+assert_true(T.commandEquals(T.runAsyncCalls[#T.runAsyncCalls],
+    {"python3", "/plugin/chat_bridge.py", "send", "48656c6c6f"}),
+    "message is hex encoded and passed without a shell")
 local joined = table.concat(T.labelTexts(T.trees.desktop), "|")
 assert_true(joined:find("Hello from OMP", 1, true) ~= nil,
     "real OMP response appears in the transcript")
@@ -1291,13 +1347,15 @@ T.jsonValue = { ok = true, launched = true, terminal = "ghostty" }
 open_terminal.props.onClick()
 assert_equals(T.runAsyncTimeouts[#T.runAsyncTimeouts], 60000,
     "desktop terminal launch outlives the default async timeout")
-assert_true(T.runAsyncCalls[#T.runAsyncCalls]:find(" open", 1, true) ~= nil,
-    "desktop open-in-terminal invokes the bridge open command")
+assert_true(T.commandEquals(T.runAsyncCalls[#T.runAsyncCalls],
+    {"python3", "/plugin/chat_bridge.py", "open"}),
+    "desktop open-in-terminal invokes the bridge without a shell")
 T.jsonValue = { ok = true, selected = false, messages = {}, targets = {} }
 local switch = T.buttonsWithText(T.trees.desktop, "Switch session")[1]
 switch.props.onClick()
 assert_equals(T.runAsyncTimeouts[#T.runAsyncTimeouts], 60000, "desktop reset outlives the default async timeout")
-assert_true(T.runAsyncCalls[#T.runAsyncCalls]:find(" reset", 1, true) ~= nil,
+assert_true(T.commandEquals(T.runAsyncCalls[#T.runAsyncCalls],
+    {"python3", "/plugin/chat_bridge.py", "reset"}),
     "switch session returns to the picker without deleting journal history")
 """,
     ),
@@ -1384,7 +1442,7 @@ assert_true(inputs[1].props.enabled == false and send.props.enabled == false,
         "desktop_widget.luau",
         """
 local chat = T.buttonsWithText(T.trees.desktop, "Chat")[1]
-local output_text = table.concat({ "line one", "line two", "line three", "line four", "line five", "line six" }, string.char(10))
+local output_text = table.concat({ "line one", "`touch /tmp/agentik_poc`", "line three", "line four", "line five", "line six" }, string.char(10))
 T.jsonValue = { ok = true, selected = true, title = "Terminal", cwd = "/work", targets = {},
     messages = {}, feed = { reset = true, revision = "1:7", events = {
         { sequence = 1, kind = "user", text = "Inspect the journal" },
@@ -1420,15 +1478,16 @@ for _, button in ipairs(T.nodesOfKind(T.trees.desktop, "button")) do
 end
 assert_true(output_copy ~= nil and output_toggle ~= nil, "desktop renders output copy and expand controls")
 output_copy.props.onClick()
-assert_equals(T.runAsyncCalls[#T.runAsyncCalls], "wl-copy " .. string.format("%q", output_text),
-    "desktop copies complete tool output without terminal input")
+assert_true(T.commandEquals(T.runAsyncCalls[#T.runAsyncCalls], {"wl-copy", output_text}),
+    "desktop copies complete tool output as one argv value without shell evaluation")
 output_toggle.props.onClick()
 local expanded_output = T.labelsWithText(T.trees.desktop, output_text)[1]
 assert_equals(expanded_output.props.maxLines, 6, "desktop expands output without refetching")
 local choice = T.buttonsWithText(T.trees.desktop, "a")[1]
 assert_true(choice ~= nil, "desktop renders choice copy controls")
 choice.props.onClick()
-assert_equals(T.runAsyncCalls[#T.runAsyncCalls], 'wl-copy "a"', "desktop choice does not submit to the terminal")
+assert_true(T.commandEquals(T.runAsyncCalls[#T.runAsyncCalls], {"wl-copy", "a"}),
+    "desktop choice does not submit to a shell or terminal")
 T.nowMs = 1000
 T.jsonValue = { ok = true, busy = false, feed = { revision = "1:8", events = {
     { sequence = 7, kind = "assistant", text = "Incremental final" },
@@ -1460,9 +1519,9 @@ assert_true(first ~= nil and custom ~= nil, "choice and custom copy buttons rend
 first.props.onClick()
 assert_equals(T.runAsyncTimeouts[#T.runAsyncTimeouts], nil, "choice copy stays fire-and-forget")
 custom.props.onClick()
-assert_equals(T.runAsyncCalls[#T.runAsyncCalls - 1], 'wl-copy "1"', "choice is copied")
-assert_equals(T.runAsyncCalls[#T.runAsyncCalls], 'wl-copy "Custom: "', "custom response prefix is copied")
-assert_equals(T.runAsyncTimeouts[#T.runAsyncTimeouts], nil, "desktop choice copy stays fire-and-forget")
+assert_true(T.commandEquals(T.runAsyncCalls[#T.runAsyncCalls - 1], {"wl-copy", "1"}), "choice is copied")
+assert_true(T.commandEquals(T.runAsyncCalls[#T.runAsyncCalls], {"wl-copy", "Custom: "}), "custom response prefix is copied")
+assert_equals(T.runAsyncTimeouts[#T.runAsyncTimeouts], nil, "panel choice copy stays fire-and-forget")
 """,
     ),
     (
@@ -1483,14 +1542,15 @@ local custom = T.buttonsWithText(T.trees.desktop, "Custom")[1]
 assert_true(first ~= nil and custom ~= nil, "compact choice and custom buttons rendered")
 first.props.onClick()
 custom.props.onClick()
-assert_equals(T.runAsyncCalls[#T.runAsyncCalls - 1], 'wl-copy "1"', "choice is copied")
-assert_equals(T.runAsyncCalls[#T.runAsyncCalls], 'wl-copy "Custom: "', "custom response prefix is copied")
+assert_true(T.commandEquals(T.runAsyncCalls[#T.runAsyncCalls - 1], {"wl-copy", "1"}), "choice is copied")
+assert_true(T.commandEquals(T.runAsyncCalls[#T.runAsyncCalls], {"wl-copy", "Custom: "}), "custom response prefix is copied")
 """,
     ),
     (
         "panel-agentik-60",
         "panel.luau",
         """
+T.watch.agentik_orbs({ ready = true, directory = "/cache/agentik/orbs", fps = 60, frame_count = 120 })
 T.nowMs = 750
 T.state.sessions = { active = 1, sessions = {
     { id = "a", project = "proj-a", attention = "active", state = "working" },
@@ -1498,32 +1558,40 @@ T.state.sessions = { active = 1, sessions = {
 onOpen()
 T.watch.sessions(T.state.sessions)
 local paths = table.concat(T.imagePaths(T.trees.panel), "|")
-assert_true(paths:find("/orbs-agentik-60/working-64-45.svg", 1, true) ~= nil,
-    "local Agentik pack drives the panel at 60 FPS")
+assert_true(paths:find("/cache/agentik/orbs/working-64-45.svg", 1, true) ~= nil,
+    "generated cache pack drives the panel at 60 FPS")
 """,
     ),
     (
         "desktop-agentik-60",
         "desktop_widget.luau",
         """
+T.watch.agentik_orbs({ ready = true, directory = "/cache/agentik/orbs", fps = 60, frame_count = 120 })
 T.nowMs = 750
 T.state.sessions = { active = 1, sessions = {
     { id = "a", project = "proj-a", attention = "active", state = "working" },
 } }
 T.watch.sessions(T.state.sessions)
 local paths = table.concat(T.imagePaths(T.trees.desktop), "|")
-assert_true(paths:find("/orbs-agentik-60/working-20-45.svg", 1, true) ~= nil,
-    "local Agentik pack drives the desktop widget at 60 FPS")
+assert_true(paths:find("/cache/agentik/orbs/working-20-45.svg", 1, true) ~= nil,
+    "generated cache pack drives the desktop widget at 60 FPS")
 """,
     ),
 ]
 
-
-def build_case(translations: str, script: str, test_body: str, defaults: str, files: str) -> str:
+def build_case(
+    translations: str,
+    script: str,
+    test_body: str,
+    defaults: str,
+    files: str,
+    orb_state: str,
+) -> str:
     script_source = (ROOT / script).read_text(encoding="utf-8")
     return (
         STUBS.replace("@@TRANSLATIONS@@", translations)
         .replace("@@DEFAULTS@@", defaults)
+        .replace("@@ORB_STATE@@", orb_state)
         .replace("@@FILES@@", files)
         + "\n" + script_source + "\n" + test_body
     )
@@ -1539,12 +1607,13 @@ def main() -> int:
     failures = 0
     with tempfile.TemporaryDirectory(prefix="agentik-luau-") as tmp:
         for name, script, body in CASES:
-            files = (
-                '["/plugin/orbs-agentik-60/manifest.json"] = true'
-                if name.endswith("-agentik-60")
-                else ""
+            files = ""
+            orb_state = (
+                ""
+                if name == "widget-orbs-loading"
+                else 'agentik_orbs = { ready = true, directory = "/cache/agentik/orbs", fps = 30, frame_count = 60 }'
             )
-            source = build_case(translations, script, body, defaults, files)
+            source = build_case(translations, script, body, defaults, files, orb_state)
             path = Path(tmp) / f"{name}.luau"
             path.write_text(source, encoding="utf-8")
             result = subprocess.run([luau, str(path)], capture_output=True, text=True)

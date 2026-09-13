@@ -23,8 +23,8 @@ jobs:
         run: python3 scripts/check_repository.py
       - name: Release archive check
         run: |
-          git archive --format=tar.gz --prefix=agentik-noctalia/ -o /tmp/agentik-noctalia.tar.gz HEAD
-          python3 scripts/check_release_archive.py /tmp/agentik-noctalia.tar.gz
+          git archive --format=tar.gz --prefix=agentik/ -o /tmp/agentik.tar.gz HEAD
+          python3 scripts/check_release_archive.py /tmp/agentik.tar.gz
       - name: Install luau CLI
         run: |
           curl --fail --show-error --location --retry 3 -o /tmp/luau.zip https://github.com/luau-lang/luau/releases/download/0.732/luau-ubuntu.zip

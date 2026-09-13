@@ -2,7 +2,7 @@
 set -euo pipefail
 
 REPOSITORY="${AGENTIK_REPOSITORY:-XLofi/agentik-noctalia}"
-DESTINATION="${AGENTIK_PLUGIN_DIR:-$HOME/.local/share/noctalia/plugins/agentik-noctalia}"
+DESTINATION="${AGENTIK_PLUGIN_DIR:-$HOME/.local/share/noctalia/plugins/agentik}"
 BASE_URL="https://github.com/$REPOSITORY/releases/latest/download"
 TEMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TEMP_DIR"' EXIT
@@ -19,18 +19,18 @@ fetch() {
     fi
 }
 
-fetch agentik-noctalia.tar.gz
-fetch agentik-noctalia.tar.gz.sha256
+fetch agentik.tar.gz
+fetch agentik.tar.gz.sha256
 (
     cd "$TEMP_DIR"
-    read -r CHECKSUM_NAME CHECKSUM_FILE < agentik-noctalia.tar.gz.sha256
-    [[ "$CHECKSUM_NAME" =~ ^[0-9a-fA-F]{64}$ && "$CHECKSUM_FILE" == "agentik-noctalia.tar.gz" ]] || {
+    read -r CHECKSUM_NAME CHECKSUM_FILE < agentik.tar.gz.sha256
+    [[ "$CHECKSUM_NAME" =~ ^[0-9a-fA-F]{64}$ && "$CHECKSUM_FILE" == "agentik.tar.gz" ]] || {
         echo "error: invalid release checksum manifest" >&2
         exit 1
     }
     printf '%s  %s\n' "$CHECKSUM_NAME" "$CHECKSUM_FILE" | sha256sum --check
 )
-python3 - "$TEMP_DIR/agentik-noctalia.tar.gz" "$TEMP_DIR" <<'PY'
+python3 - "$TEMP_DIR/agentik.tar.gz" "$TEMP_DIR" <<'PY'
 import sys
 import tarfile
 from pathlib import Path, PurePosixPath
@@ -46,7 +46,7 @@ with tarfile.open(archive_path, "r:gz") as archive:
             path.is_absolute()
             or ".." in path.parts
             or not path.parts
-            or path.parts[0] != "agentik-noctalia"
+            or path.parts[0] != "agentik"
             or normalized in seen
         ):
             raise SystemExit(f"error: unsafe release archive path: {member.name}")
@@ -62,8 +62,8 @@ with tarfile.open(archive_path, "r:gz") as archive:
     archive.extractall(Path(destination), filter="data")
 PY
 
-[[ -f "$TEMP_DIR/agentik-noctalia/plugin.toml" ]] || {
-    echo "error: release archive does not contain agentik-noctalia/plugin.toml" >&2
+[[ -f "$TEMP_DIR/agentik/plugin.toml" ]] || {
+    echo "error: release archive does not contain agentik/plugin.toml" >&2
     exit 1
 }
 
@@ -71,7 +71,7 @@ mkdir -p "$(dirname "$DESTINATION")"
 BACKUP="${DESTINATION}.previous"
 rm -rf "$BACKUP"
 if [[ -e "$DESTINATION" ]]; then mv "$DESTINATION" "$BACKUP"; fi
-if ! mv "$TEMP_DIR/agentik-noctalia" "$DESTINATION"; then
+if ! mv "$TEMP_DIR/agentik" "$DESTINATION"; then
     [[ -e "$BACKUP" ]] && mv "$BACKUP" "$DESTINATION"
     exit 1
 fi
@@ -79,6 +79,6 @@ rm -rf "$BACKUP"
 
 echo "Installed Agentik at $DESTINATION"
 if command -v noctalia >/dev/null 2>&1; then
-    noctalia msg plugins disable notfinaldev/agentik-noctalia >/dev/null 2>&1 || true
-    noctalia msg plugins enable notfinaldev/agentik-noctalia >/dev/null 2>&1 || true
+    noctalia msg plugins disable notfinaldev/agentik >/dev/null 2>&1 || true
+    noctalia msg plugins enable notfinaldev/agentik >/dev/null 2>&1 || true
 fi

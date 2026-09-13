@@ -1,13 +1,13 @@
-id = "notfinaldev/agentik-noctalia"
+id = "notfinaldev/agentik"
 name = "Agentik"
 version = "0.1.0"
-plugin_api = 21
+plugin_api = 24
 author = "notfinaldev"
 license = "MIT"
 icon = "sparkles"
 description = "Local coding-agent monitoring and safe multi-harness session chat."
 tags = ["bar", "desktop", "panel", "service", "ai", "productivity"]
-dependencies = ["python3", "omp", "hermes", "wl-copy", "xdg-open", "sh", "xdg-terminal-exec", "ghostty", "kitty", "foot", "alacritty", "gnome-terminal", "kgx", "konsole"]
+dependencies = ["python3", "omp"]
 
 [[setting]]
 key = "show_task"

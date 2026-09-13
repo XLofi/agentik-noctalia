@@ -1,12 +1,25 @@
-local COMMUNITY_FRAME_RATE = 30
-local COMMUNITY_FRAME_COUNT = 60
-local AGENTIK_FRAME_RATE = 60
-local AGENTIK_FRAME_COUNT = 120
-local AGENTIK_ORB_DIR = noctalia.pluginDir() .. "/orbs-agentik-60"
-local USE_AGENTIK_ORBS = noctalia.fileExists(AGENTIK_ORB_DIR .. "/manifest.json")
-local FRAME_RATE = USE_AGENTIK_ORBS and AGENTIK_FRAME_RATE or COMMUNITY_FRAME_RATE
-local FRAME_COUNT = USE_AGENTIK_ORBS and AGENTIK_FRAME_COUNT or COMMUNITY_FRAME_COUNT
-local ORB_DIR = USE_AGENTIK_ORBS and AGENTIK_ORB_DIR or (noctalia.pluginDir() .. "/orbs")
+local home = noctalia.getenv("HOME") or ""
+local cache_home = noctalia.getenv("XDG_CACHE_HOME")
+if cache_home == nil or cache_home == "" then cache_home = home .. "/.cache" end
+local ORB_DIR = cache_home .. "/agentik/orbs"
+local FRAME_RATE = 30
+local FRAME_COUNT = 60
+local ORBS_READY = false
+local orb_config = noctalia.state.get("agentik_orbs")
+if type(orb_config) == "table" then
+    ORB_DIR = tostring(orb_config.directory or ORB_DIR)
+    FRAME_RATE = tonumber(orb_config.fps) or FRAME_RATE
+    FRAME_COUNT = tonumber(orb_config.frame_count) or FRAME_COUNT
+    ORBS_READY = orb_config.ready == true
+end
+local function orb_image(props)
+    if ORBS_READY then return ui.image(props) end
+    return ui.glyph({
+        name = "sparkles",
+        size = props.width or 20,
+        color = "primary",
+    })
+end
 local function configured_bool(key, default)
     local value = noctalia.getConfig(key)
     if value == nil then return default end
@@ -339,7 +352,7 @@ local function render()
     local children = {}
     if agents ~= nil and display_state ~= nil then
         local attention = configured_bool("show_attention", true) and attention_of(item) or "active"
-        table.insert(children, ui.image({
+        table.insert(children, orb_image({
             path = orb_path(display_state, attention, frame),
             width = 20,
             height = 20,
@@ -347,9 +360,9 @@ local function render()
         }))
     elseif has_done_session() then
         local path = ORB_DIR .. "/done-20-" .. tostring(done_frame_index()) .. ".svg"
-        table.insert(children, ui.image({ path = path, width = 20, height = 20 }))
+        table.insert(children, orb_image({ path = path, width = 20, height = 20 }))
     elseif quiet ~= nil then
-        table.insert(children, ui.image({
+        table.insert(children, orb_image({
             path = orb_path(display_state, "active", frame),
             width = 20,
             height = 20,
@@ -381,7 +394,7 @@ local function render()
         end
     end
     if displayed_progress ~= nil then
-        table.insert(children, ui.image({
+        table.insert(children, orb_image({
             path = progress_path(displayed_progress),
             width = 20,
             height = 20,
@@ -418,7 +431,7 @@ end
 local function set_update_interval()
     local animated = not configured_bool("reduce_motion", false)
         and ((tonumber(sessions.active) or 0) > 0 or has_animated_session() or progress_is_animating())
-    noctalia.setUpdateInterval(animated and 16 or 1000)
+    noctalia.setUpdateInterval(animated and math.floor(1000 / FRAME_RATE) or 1000)
 end
 
 function update()
@@ -431,6 +444,26 @@ noctalia.state.watch("sessions", function(value)
     sessions = value or { active = 0, sessions = {} }
     notify_attention_transitions(sessions)
     if has_animated_session() then frame = frame_index() end
+    render()
+    set_update_interval()
+end)
+
+noctalia.state.watch("agentik_orbs", function(value)
+    if type(value) ~= "table" then return end
+    local fps = tonumber(value.fps)
+    local frame_count = tonumber(value.frame_count)
+    if value.ready ~= true
+        or type(value.directory) ~= "string"
+        or (fps ~= 30 and fps ~= 60)
+        or frame_count ~= fps * 2
+    then
+        return
+    end
+    ORB_DIR = value.directory
+    FRAME_RATE = fps
+    FRAME_COUNT = frame_count
+    ORBS_READY = true
+    frame = frame_index()
     render()
     set_update_interval()
 end)

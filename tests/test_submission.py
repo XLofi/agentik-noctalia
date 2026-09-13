@@ -17,7 +17,8 @@ class SubmissionBuilderTests(unittest.TestCase):
                 top_level,
                 set(build_submission.FILES) | set(build_submission.DIRECTORIES),
             )
-            self.assertTrue((output / "orbs/manifest.json").is_file())
+            self.assertTrue((output / "build_orbs.py").is_file())
+            self.assertFalse((output / "orbs").exists())
             self.assertTrue((output / "translations/en.json").is_file())
             for excluded in (
                 "CONTRIBUTING.md",

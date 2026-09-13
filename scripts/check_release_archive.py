@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import json
 import tarfile
 from pathlib import PurePosixPath
 
@@ -12,13 +11,13 @@ from check_repository import KEY_SUFFIXES, PROPRIETARY_MARKERS, STALE_BRANDS, TE
 
 MAX_MEMBER_SIZE = 8 * 1024 * 1024
 MAX_ARCHIVE_CONTENT = 128 * 1024 * 1024
-ARCHIVE_ROOT = "agentik-noctalia"
+ARCHIVE_ROOT = "agentik"
 REQUIRED_PATHS = {
     f"{ARCHIVE_ROOT}/LICENSE",
     f"{ARCHIVE_ROOT}/THIRD_PARTY_LICENSES",
     f"{ARCHIVE_ROOT}/README.md",
+    f"{ARCHIVE_ROOT}/build_orbs.py",
     f"{ARCHIVE_ROOT}/chat_bridge.py",
-    f"{ARCHIVE_ROOT}/orbs/manifest.json",
     f"{ARCHIVE_ROOT}/scripts/check_repository.py",
 }
 
@@ -80,20 +79,6 @@ def check_archive(path: str) -> None:
                 )
                 if any(text not in notice for text in required_notice_text):
                     fail("THIRD_PARTY_LICENSES does not preserve the Thinking Orbs MIT attribution")
-            if relative.as_posix() == "orbs/manifest.json":
-                try:
-                    manifest = json.loads(content.decode("utf-8"))
-                except (UnicodeDecodeError, json.JSONDecodeError) as error:
-                    fail(f"orb manifest is invalid: {error}")
-                expected_manifest = {
-                    "fps": 30,
-                    "frame_count": 60,
-                    "source": "https://github.com/Jakubantalik/thinking-orbs",
-                    "license": "MIT",
-                    "copyright": "Copyright (c) 2026 Jakub Antalik",
-                }
-                if any(manifest.get(key) != value for key, value in expected_manifest.items()):
-                    fail("orb manifest must describe the attributed 30 FPS tier")
             if relative.suffix.lower() not in TEXT_SUFFIXES:
                 continue
             source = content.decode("utf-8", errors="replace")

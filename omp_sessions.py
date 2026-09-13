@@ -9,6 +9,7 @@ import json
 import os
 import re
 import sqlite3
+import sys
 import time
 from contextlib import closing
 from pathlib import Path
@@ -25,8 +26,15 @@ CACHE_PATH = Path(os.environ.get(
 ))
 
 
-def excluded_projects() -> set[str]:
-    return {value.strip() for value in os.environ.get("AGENTIK_EXCLUDED_PROJECTS", "").split(",") if value.strip()}
+def excluded_projects(encoded: str | None = None) -> set[str]:
+    if encoded is None:
+        value = os.environ.get("AGENTIK_EXCLUDED_PROJECTS", "")
+    else:
+        try:
+            value = bytes.fromhex(encoded).decode("utf-8")
+        except (ValueError, UnicodeDecodeError) as error:
+            raise ValueError("invalid excluded-project encoding") from error
+    return {item.strip() for item in value.split(",") if item.strip()}
 
 
 def tail_lines(path: Path, limit: int = 96) -> list[str]:
@@ -502,14 +510,14 @@ def active_hermes_sessions(now: float) -> list[dict]:
         })
     return sessions
 
-def main() -> None:
+def main(encoded_excluded_projects: str | None = None) -> None:
     now = time.time()
     active_items = []
     quiet_items = []
     exited_items = []
     index = JournalIndex(CACHE_PATH)
     existing = set()
-    excluded = excluded_projects()
+    excluded = excluded_projects(encoded_excluded_projects)
     live_journals = running_omp_journals()
     if JOURNALS.exists():
         for path in JOURNALS.rglob("*.jsonl"):
@@ -537,4 +545,6 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) > 2:
+        raise SystemExit("usage: omp_sessions.py [excluded-projects-hex]")
+    main(sys.argv[1] if len(sys.argv) == 2 else None)

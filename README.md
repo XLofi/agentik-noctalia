@@ -8,7 +8,7 @@ Agentik is a local-first Noctalia control surface for coding agents. It monitors
 
 | Field | Value |
 | --- | --- |
-| ID | `notfinaldev/agentik-noctalia` |
+| ID | `notfinaldev/agentik` |
 | Entries | Bar widget: `agents`; panel: `session-panel`; desktop widget: `desktop-agents`; service: `monitor` |
 
 ## Usage
@@ -21,14 +21,14 @@ Agentik is a local-first Noctalia control surface for coding agents. It monitors
 Open or toggle the panel from a terminal or compositor binding:
 
 ```sh
-noctalia msg panel-toggle notfinaldev/agentik-noctalia:session-panel
+noctalia msg panel-toggle notfinaldev/agentik:session-panel
 ```
 
 The panel can continue a completed OMP session, fork a session that is active elsewhere, or start a new session with an installed supported harness. **Open in terminal** resumes or forks the selected session in a supported terminal emulator. While another terminal owns an OMP journal, the panel remains read-only.
 
 ## Requirements
 
-- Noctalia plugin API 21 or newer.
+- Noctalia plugin API 24 or newer.
 - `python3` on `PATH`. The monitor and chat bridge are Python programs launched by Noctalia.
 - `omp` on `PATH`, or `OMP_BIN` set to its executable. OMP supplies the required session journal and chat workflows.
 - Optional: `hermes` on `PATH`, or `HERMES_BIN` set to its executable, to monitor and launch Hermes Agent sessions.
@@ -61,9 +61,9 @@ Noctalia also supplies the standard placement, position, layer, and open-near-cl
 
 Agentik does not use a remote service and does not send session journals anywhere.
 
-- **OMP:** reads `~/.omp/agent/sessions/**/*.jsonl` and inspects the current user's `/proc/<pid>/fd` links to distinguish live sessions from completed, failed, or cancelled sessions. It calls `omp config get modelRoles --json` and `omp models --json` to populate local model choices. Chat and terminal actions run the selected local `omp` command with its normal configuration.
+- **OMP:** reads `~/.omp/agent/sessions/**/*.jsonl` and `~/.omp/agent/terminal-sessions/pts-*`, then inspects the current user's `/proc/<pid>/fd` links to distinguish live sessions from completed, failed, or cancelled sessions. It calls `omp config get modelRoles --json` and `omp models --json` to populate local model choices. Chat and terminal actions run the selected local `omp` command with its normal configuration.
 - **Hermes Agent:** detects a live `hermes` process under the current user, reads `~/.hermes/state.db` in SQLite read-only mode, and reads `~/.hermes/provider_models_cache.json` for local model choices. Hermes is ignored when it is not installed or running.
-- **Cache:** writes incremental journal metadata to `${XDG_CACHE_HOME:-~/.cache}/agentik/journal-index.json` so unchanged journals are not reparsed.
+- **Cache:** generates the attributed orb animation pack and writes incremental journal metadata below `${XDG_CACHE_HOME:-~/.cache}/agentik/`.
 - **Chat state:** writes selection, lifecycle, locks, and owner-only run logs below `${XDG_STATE_HOME:-~/.local/state}/agentik/chat`.
 - **Project access:** monitoring does not read project files. **Open project directory** calls `xdg-open`. A chat or terminal action intentionally starts the chosen harness in the selected project directory; that harness retains its normal filesystem permissions, tools, provider configuration, and network policy.
 
@@ -74,8 +74,8 @@ Environment overrides used for development and controlled deployments are `AGENT
 - Agent state combines an exact lifecycle (`running`, `waiting`, `blocked`, `completed`, `failed`, or `cancelled`) with an inferred work animation (`working`, `searching`, `verifying`, `awaiting input`, `connecting`, `integrating`, `creating`, `pausing`, or `planning`). The original tool intent remains visible beside the inferred label.
 - Agentik preserves a single writer for every OMP journal. It never injects input into a session owned by a terminal.
 - Transcript polling is revisioned and bounded. Unchanged polls do not resend transcript content.
-- The included 30 FPS SVG animation pack is derived from Jakub Antalik's Thinking Orbs under the MIT License; see `THIRD_PARTY_LICENSES`.
-- An optional attributed 60 FPS pack can be generated locally with `python3 build_orbs.py --fps 60 --output orbs-agentik-60`; reload Agentik afterward. The generated pack remains free under the same Thinking Orbs MIT notice.
+- On first run, Agentik generates an attributed 30 FPS SVG animation pack in `${XDG_CACHE_HOME:-~/.cache}/agentik/orbs`; the shell remains usable with a static fallback while generation completes. The generator is `build_orbs.py`, derived from Jakub Antalik's Thinking Orbs under the MIT License; see `THIRD_PARTY_LICENSES`.
+- An optional attributed 60 FPS pack can replace it with `python3 build_orbs.py --fps 60`; reload Agentik afterward. The generated pack remains free under the same Thinking Orbs MIT notice.
 
 ## License
 

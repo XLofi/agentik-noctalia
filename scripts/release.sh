@@ -47,10 +47,10 @@ python3 scripts/luau_tests.py
 
 echo "==> smoke: panel load"
 LOG="$HOME/.cache/noctalia/noctalia.log"
-if [[ -f "$LOG" ]] && noctalia msg panel-open "notfinaldev/agentik-noctalia:session-panel" >/dev/null 2>&1; then
+if [[ -f "$LOG" ]] && noctalia msg panel-open "notfinaldev/agentik:session-panel" >/dev/null 2>&1; then
     before=$(wc -l < "$LOG")
     sleep 1
-    noctalia msg panel-close "notfinaldev/agentik-noctalia:session-panel" >/dev/null 2>&1 || true
+    noctalia msg panel-close "notfinaldev/agentik:session-panel" >/dev/null 2>&1 || true
     if tail -n +$((before + 1)) "$LOG" | grep -q 'luau_load failed'; then
         echo "error: a panel script failed to load; see noctalia.log" >&2
         exit 1
@@ -80,9 +80,9 @@ git push origin "v$VERSION"
 
 ARCHIVE="$(mktemp --suffix=.tar.gz)"
 CHECKSUM="$(mktemp --suffix=.sha256)"
-git archive --format=tar.gz --prefix=agentik-noctalia/ -o "$ARCHIVE" "v$VERSION"
+git archive --format=tar.gz --prefix=agentik/ -o "$ARCHIVE" "v$VERSION"
 python3 scripts/check_release_archive.py "$ARCHIVE"
-sha256sum "$ARCHIVE" | sed 's#  .*#  agentik-noctalia.tar.gz#' > "$CHECKSUM"
+sha256sum "$ARCHIVE" | sed 's#  .*#  agentik.tar.gz#' > "$CHECKSUM"
 TITLE="Agentik v$VERSION"
 if [[ -z "$NOTES" ]]; then
     NOTES="Agentik $VERSION. See CHANGELOG.md for user-visible changes and compatibility notes."
@@ -90,6 +90,6 @@ fi
 RELEASE_ARGS=(--title "$TITLE" --target main --notes "$NOTES")
 if [[ "$PRERELEASE" == true ]]; then RELEASE_ARGS+=(--prerelease); fi
 gh release create "v$VERSION" "${RELEASE_ARGS[@]}" \
-    "$ARCHIVE#agentik-noctalia.tar.gz" "$CHECKSUM#agentik-noctalia.tar.gz.sha256"
+    "$ARCHIVE#agentik.tar.gz" "$CHECKSUM#agentik.tar.gz.sha256"
 rm -f "$ARCHIVE" "$CHECKSUM"
 echo "==> released v$VERSION"

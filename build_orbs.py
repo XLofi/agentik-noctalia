@@ -9,9 +9,10 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import os
 from pathlib import Path
 
-OUT = Path(__file__).with_name("orbs")
+OUT = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "agentik/orbs"
 FPS = 30
 LOOP_SECONDS = 2
 FRAMES = FPS * LOOP_SECONDS
@@ -382,23 +383,34 @@ def render(
     return render_phase(state, size, TAU * (index % frames) / frames, attention)
 
 
+def manifest_data(fps: int) -> dict[str, int | str]:
+    return {
+        "schema_version": 1,
+        "fps": fps,
+        "frame_count": fps * LOOP_SECONDS,
+        "loop_seconds": LOOP_SECONDS,
+        "source": "https://github.com/Jakubantalik/thinking-orbs",
+        "license": "MIT",
+        "copyright": "Copyright (c) 2026 Jakub Antalik",
+    }
+
+
 def manifest(fps: int) -> str:
-    return json.dumps(
-        {
-            "schema_version": 1,
-            "fps": fps,
-            "frame_count": fps * LOOP_SECONDS,
-            "loop_seconds": LOOP_SECONDS,
-            "source": "https://github.com/Jakubantalik/thinking-orbs",
-            "license": "MIT",
-            "copyright": "Copyright (c) 2026 Jakub Antalik",
-        },
-        indent=2,
-        sort_keys=True,
-    ) + "\n"
+    return json.dumps(manifest_data(fps), indent=2, sort_keys=True) + "\n"
 
 
-def generate(output: Path, fps: int) -> None:
+def current_pack(output: Path) -> dict[str, int | str] | None:
+    try:
+        current = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    if not isinstance(current, dict) or current.get("fps") not in (30, 60):
+        return None
+    expected = manifest_data(int(current["fps"]))
+    return expected if current == expected else None
+
+
+def generate(output: Path, fps: int) -> dict[str, int | str]:
     if fps not in (30, 60):
         raise ValueError("orb FPS must be 30 or 60")
     frames = fps * LOOP_SECONDS
@@ -441,14 +453,27 @@ def generate(output: Path, fps: int) -> None:
         if path.name not in expected:
             path.unlink()
     write_asset(manifest_path, manifest(fps))
+    return manifest_data(fps)
+
+
+def payload(output: Path, data: dict[str, int | str]) -> dict[str, int | str | bool]:
+    return {"ready": True, "directory": str(output), **data}
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate attributed Agentik orb frames")
-    parser.add_argument("--fps", type=int, choices=(30, 60), default=FPS)
+    parser.add_argument("--fps", type=int, choices=(30, 60))
     parser.add_argument("--output", type=Path, default=OUT)
+    parser.add_argument(
+        "--ensure",
+        action="store_true",
+        help="reuse a complete supported pack, generating the 30 FPS default only when absent",
+    )
     args = parser.parse_args()
-    generate(args.output, args.fps)
+    data = current_pack(args.output) if args.ensure and args.fps is None else None
+    if data is None:
+        data = generate(args.output, args.fps or FPS)
+    print(json.dumps(payload(args.output, data), sort_keys=True))
 
 
 if __name__ == "__main__":
